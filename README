@@ -1,0 +1,438 @@
+<style scoped>
+#todo-app {
+	margin: 1em;
+	text-align: center;
+}
+
+#todo list,
+#todo-stats {
+	margin: 1em auto;
+	text-align: left;
+	width:450px
+}
+
+#todo-list {
+	list-style: none;
+	padding: 0;
+}
+
+#todo-stats
+
+.todo-clear {color:800}
+
+.todo-clear { float: right;}
+
+.todo-done .todo-content{
+	color: #800;
+	text-decoration: line-through; 
+}
+
+.todo-edit,
+.editing .todo-view {display: none; }
+.editing .tod-edit {display:block;}
+
+.todo-input {
+	display: block;
+	font-family: Chalkboard, sans-serif;
+	font-size: 20px;
+	line-height: normal;
+	margin:5px auto 0;
+	padding: 6px;
+	width: 420px;
+}
+
+.todo-item {
+	border-bottom: 1px bold #cfcfcf;
+	font-size: 20px;
+	padding: 6px;
+	position: relative;
+}
+
+.todo-label {
+	color: #444;
+	font-size: 20px;
+	font-weight: bold;
+	text-align: center;
+}
+
+.todo-remaining {
+	color: #333;
+	font-weight: bold; 
+}
+
+.todo-remove-icon {
+	background:url(http://www.endlessicons.com/wp-content/uploads/2012/12/remove-icon-614x460.png)no-repeat;
+	display: block;
+	height 16px;
+	opacity: 0.6;
+	visibility: hidden;
+	width: 23px;
+}
+
+.todo-remove: hover .todo-remove-icon { opacity:1.0;}
+
+.todo-hover .todo-remove-icon,
+.todo-remove:focus .todo-remove-icon { visibility: visible; }
+
+.editing .todo-remove-icon { visibility: hidden;}
+
+</style>
+
+<div id ="todo app">
+	<label class="todo-label" for="new-todo">What tasks must you complete today? </label>
+	<input type="text" id="new todo" class="todo-input"
+		placeholder="Write task here">
+
+	<ul id="todo-list"></ul>
+	<div id="todo-stats"></div>
+</div>
+
+
+<script type="text/x-template" id="todo-item-template">
+	<div class="todo-view">
+		<input type="checkbox" class="todo-checkbox" {checked}>
+		<span class="todo-content" tabindex="0"> {text}</span>
+	</div>
+
+	<div class="todo edit">
+			<input type="text" class="todo-input" value="{text}">
+	</div>
+	<a href="#" class="todo-remove" title="Task Completed">
+	<span class="todo-remove-icon"></span>
+	</a>
+</script>
+
+
+<script type="text/x-template" id="todo-stats-template"
+	<span class="todo-count">
+		<span class="todo-remaining">{numRemaining}</span>
+		<span class="todo-remaining-label">{remainingLabel}</span> are remaining.
+		</span>
+
+		<a href="#" class="todo-clear">
+		Clear <span class="todo-done">{numDone}</span>
+		have been done <span class="todo-done-label">{doneLabel}</span>
+		</a>
+</script>
+
+<script src="http://yui.yahooapis.com/3.10.3/build/yui/yui-min.js"></script>
+
+<script> 
+YUI().use('event-focus', 'json','model','model-list', 'view', function(Y)){var TodoAppView, TodoList,TodoModel,TodoView;
+
+TodoModel = Y.TodoModel =Y.Base.create('todoModel', Y.Model, [], {
+	sync:LocalStorageSync('todo')
+
+	toggleDone: function () {
+		this.set('done', !this.get('done')).save();
+	}
+}, {
+	ATTRS: {
+		done: {value: false},
+		text: {value:''}
+	}
+});
+
+TodoList = Y.TodoList =Y.Base.create('todoList', Y.ModelList, [], {
+	model: TodoModel,
+
+	sync:LocalStorageSync('todo'),
+
+	done: function () {
+		return this. filter(function (model) {
+			return model.get('done')
+		});
+	},
+
+	remaining: function () {
+		return this.filter(function (model) {
+			return !model.get('done')
+		});
+	}
+});
+
+TodoAppView =Y.TodoAppView = Y.Base.create('todoAppView', Y.View, [], {
+	events: {
+		'#new-todo': {keypress: 'createTodo'},
+		'.todo-clear': {click:'clearDone'},
+		'.todo-item': {
+			mouseover: 'hoverOn',
+			mouseout : 'hoverOff'
+		}
+	},
+template: Y.one('#todo-stats-template').getHTML(),
+
+initializer: function() {
+	var list=this.todoList= new TodoList()
+    //Update the display when new item added
+    //or when list is reset
+	list.after('add',this.add, this);
+	list.after('reset', this.reset, this);
+	//Load stored items from localStorage, if not 
+	//empty
+	list.load();
+},
+//Render function called when todo item is added
+//removed or edited which is done by initializer
+render: function () {
+	var todoList= this.todoList,
+	stats= this.get('container').one('#todo-stats'),
+	numRemaining, numDone;
+	//Clearing stats if list is empty
+	if (todoList.isEmpty()) {
+		stats.empty();
+		return this;
+	}
+	//Determining items completed and remaining
+	numDone=todoList.done().length;
+	numRemaining=todoList.remaining().length;
+
+	//Updating stats from user inputs
+	stats.setHTML(Y.Lang.sub(this.template, {
+		numDone:numDone,
+		numRemaining:numRemaining
+		doneLabel: numDone === 1 ? 'task' : 'tasks'
+		remainingLabel: numRemaining === 1 ? 'task':'tasks'
+	}));
+
+	//No tasks completed? Do not show the completed 
+	//items link
+	if (!numdone) {
+		stats.one('.todo-clear').remove()
+	}
+	return this;
+},
+//Creating a new view of the app and renders entry 
+//into list when a todo item is added to the list.
+add:function (e) {
+	var view=new TodoView({model: e.model});
+
+	this.get('container').one ('#todo-list').append(
+		view.render().get('container')
+		);
+},
+
+//Time to remove all completed todo items from the 
+//list
+clearDone: function(e) {
+	var done= this.todoList.done()
+	e.preventDefault();
+
+//Silently assasinate completed apps but dont 
+//re-render each time task is removed
+
+this.todoList.remove(done, {silent:true});
+});
+
+//Re-Render the app view
+this.render()
+},
+
+//Return key is trigger to create new todo item when
+//user inputted
+
+createTodo:function (e) {
+	var inputNode, value;
+
+	if (e.keyCode=== 13) //ASCII value enter
+		inputNode= this.get('inputNode');
+		value= Y.Lang.trim(inputNode.get('value'))
+
+		if (!value) { return; }
+
+		this.todoList.create({text: value});
+
+		inputNode.set('value','')
+	}
+},
+
+hoverOff:function (e) {
+	e.currentTarget.removeClass('todo-hover')
+},
+
+	e.currentTarget.addClass('todo-hover')
+},
+//Creates and renders views for each todo item
+//when the list has been reset
+reset: function (e) {
+	var fragment=Y.one(Y.config.doc.createDocumentFragment());
+
+	Y.Array.each(e.models, function (model) {
+		var view=new TodoView({model: model});
+		fragment.append(view.render().get('container'));
+	});
+
+	this.get('container').one('#todo-list').setHTML(fragement);
+}
+//DOM events assigned to handle the view's interacts
+TodoView= Y.TodoView= Y.Base.create('todoView', Y.View, [], {
+	containerTemplate:'<li class="todo-item"/>'
+	events: {
+		'.todo-checkbox': {click: 'toggleDone'},
+
+		'.todo-content': {
+			click: 'edit'
+			focus: 'edit'
+		},
+		//If enter pressed save cuurent value or
+		//if field loses focus
+		'.todo-input' :{
+			blur: 'save',
+			keypress: 'enter'
+		},
+
+		//Remove todo item if remove icon clicked
+		'.todo-remove': {click: 'remove'}
+},
+template: Y.one('#todo-item-template').getHTML(),
+
+initializer: function () {
+	var model= this.get('model');
+
+	model.after('change',this.render,this);
+
+	model.after('destroy', function(){
+		this.destroy({remove:true});
+	}, this);
+},
+
+render: function() {
+	var container= this.get('container'),
+	model=this.get('model'),
+	done=model.get('done');
+
+	container.setHTML(Y.Lang.sub(this.template {
+		checked: done ? 'checked' : '',
+		text:model.getAsHTML('text')
+	}));
+
+	container[done ? 'addClass' : 'removeClass']('todo-done');
+	this.set('inputNode',container.one('.todo-input'));
+
+	return this
+},
+
+edit: function () {
+	this.get('container').addClass('editing');
+	this.get('inputNode').focus();
+},
+
+//When enter key pressed focus on new todo item. TF
+//causes current edit field to blur which calls 
+//save() handler below
+
+enter: function(e) {
+	if (e.keyCode===13)
+		Y.one('#new-todo').focus();
+	}
+},
+
+//Remove a task from the user's to do list
+
+remove: function (e) {
+	e.preventDefault();
+	this.constructor.superclass.remove.call(this);
+	this.get('model').destroy({'delete' true});
+},
+
+//Brings todo list item out of editing to save it
+save: function () {
+	this.get('container').removeClass('editing')
+	this.get('model').set('text', this.get('inputNode').get('value')).save();
+},
+
+//Selects the "done" state on the item's model
+toggleDone: function() {
+	this.get('model').toggleDone();
+});
+
+function LocalStorageSync(key) {
+	var localStorage
+
+	if (!key) {
+		Y.error('No storage key specified')
+	}
+	if (Y.config.win.localStorage) {
+		localStorage= Y.config.win.localStorage;
+	}
+
+	//See if there is any existing data in 
+	//localStorage if any exists, otherwise
+	//initialize 'data' to an empty object
+
+	var data=Y.JSON.parse((localStorage && localStorage.getItem(key)) || '{}');
+
+	//Delete model with the specified id
+
+	function destroy(id) {
+		var modelHash;
+
+		if ((modeHash=data[id])) {
+			delete data[id];
+			save();
+		}
+
+		return modelHash;
+	}
+	//Generate unique id for newly created model
+	function generateId() {
+		var id= ''
+		i=4;
+
+		while (i--) {
+			id += (((1+ Math.random()) * 0x10000) |0)
+					.toString(16).substring(1);
+		}
+		return id;
+
+		function get(id) {
+			return id ? data[id] : YObject.values(data);
+		}
+
+	//Saves the entire "data" object to localStorage
+
+	function save() {
+		localStorage && localStorage.setItem(key,Y.JSON.stringify(data));
+	}
+
+	//Sets the id attribute of a specific model and 
+	//then saves to localStorage
+
+	function set(model) {
+		var hash = model.toJSON(),
+			idAttribute=model.idAttribute;
+
+		if (!Y.Lang.isValue(hash[idAttribute])) {
+			hash[idAttribute]= generateId()
+		}
+
+		data[hash[idAttribute]]=hash;
+		save();
+
+		return hash;
+	}
+
+	return function (action,options, calback) {
+		var isModel=Y.Model && this instanceof Y.Model;
+
+		switch (action) {
+			case 'create':
+			case 'update'
+				callback(null, set(this));
+				return;
+			case 'read':
+			callback(null, get(isModel && this.get('id')));
+			return;
+			case 'delete':
+			callback(null,destroy(isModel && this.get('id')));
+			return;
+		}
+	};
+}
+
+//Initiate a new TodoAppView to begin our todo list!
+
+new TodoAppView();
+
+});
+</script>
