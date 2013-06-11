@@ -8,14 +8,21 @@
 <style type="text/css">
 
 body{
-	background: #eaeaea url('Notebook-Paper.gif');
+	background: #eaeaea url('images.jpeg');
+}
+#new-todo {
+	padding: 16px 16px 16px 60px;
 }
 #header {
 	text-align:center;
-	font: 14px 'Tahoma', Tahoma, Arial, sans-serif;
+	font: 18px 'Tahoma', Tahoma, Arial, sans-serif;
+	color:white;
+	padding-top: 15px;
+	border-radius: inherit;
 }
 #todoapp input::-webkit-input-placeholder {
 	font-style: italic;
+	position: center;
 }
 
 #todo-list input.edit {
@@ -33,6 +40,13 @@ body{
 #todoapp ul {
 	list-style-type: none;
 }
+
+#todo-list li {
+	position: relative;
+	font-size: 24px;
+	border-bottom: 1px dotted #ccc;
+	text-align: center;
+}
 </style>
 </head>
 <body>
@@ -44,7 +58,7 @@ body{
 <section id="todoapp">
 	<header id="header">
 		<h1>Teferi's To-Do List</h1>
-		<input id ="new-todo" placeholder="What must you do today, Teferi?">
+		<input id ="new-todo" placeholder="Today's Tasks">
 		<div>
 			<a href="#/">Show All Tasks</a> |
 			<a href="#/pending">Working Tasks</a> |
